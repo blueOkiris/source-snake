@@ -4,6 +4,8 @@
 
 A simple snake clone written entirely in C++ using SFML
 
+![image](demo.gif)
+
 ## Build
 
 On a Debian system, run `make install-deps` to install dependencies
