@@ -2,3 +2,4 @@
 .highscore.txt
 obj
 *.o
+snake
