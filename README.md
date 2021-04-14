@@ -4,6 +4,8 @@
 
 A simple snake clone written entirely in C++ using SFML
 
+The engine itself has been separated into its own [library](https://github.com/blueOkiris/link)
+
 ![image](demo.gif)
 
 ## Build
