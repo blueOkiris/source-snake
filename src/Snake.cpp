@@ -1,20 +1,29 @@
-#include <iostream>
 #include <vector>
+#include <utility>
+#include <iostream>
+#include <any>
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
+#include <GameLoop.hpp>
+#include <InputManager.hpp>
+#include <ResourceManager.hpp>
 #include <Game.hpp>
-#include <Fruit.hpp>
 #include <Snake.hpp>
 
-using namespace sourcesnake;
+using namespace snake;
 
-Snake::Snake() :
-        _moveDelayDec(0.005), _minParts(3),
+Snake::Snake(
+        const link::ResourceManager &resMan, const link::InputManager &inpMan) :
+        _moveDelayDec(0.005), _defMoveDelay(0.2),
+        _minParts(3), _resMan(resMan), _inpMan(inpMan),
         _headPos(sf::Vector2f(0, 0)), _bodyInfos(std::vector<BodyInfo>()),
         _dir(SnakeDirection::Right), _nextDir(SnakeDirection::Right),
-        _moveTimer(0), _moveDelay(0.2),
-        headTex(sourcesnake::loadTexture("img/snake-head.png")),
-        bodyTex(sourcesnake::loadTexture("img/snake-body.png")) {
+        _moveTimer(0), _moveDelay(_defMoveDelay),
+        _eatBuffer(resMan.soundBuffer("eat")),
+        _deathBuffer(resMan.soundBuffer("die")) {
+    _eatSound.setBuffer(_eatBuffer);
+    _deathSound.setBuffer(_deathBuffer);
+    
     for(size_t i = 0; i < _minParts - 1; i++) {
         _bodyInfos.push_back(
             std::make_pair(sf::Vector2f(0, 0), SnakeDirection::Right)
@@ -22,92 +31,42 @@ Snake::Snake() :
     }
 }
 
-std::pair<bool, bool> Snake::update(
-        const double delta,
-        const bool upPressed, const bool downPressed,
-        const bool leftPressed, const bool rightPressed,
-        const Fruit *fruit,
-        const sf::Vector2u winSize, const sf::Vector2u wallTexSize) {
-    // Move if necessary
-    _moveTimer += delta;
-    if(_moveTimer >= _moveDelay) {
-        _moveTimer = 0;
-        _move();
-    }
-    
-    // Change direction on key press (but update when move triggers)
-    _nextDir = upPressed ?
-        SnakeDirection::Up :
-        downPressed ?
-            SnakeDirection::Down :
-            leftPressed ?
-                SnakeDirection::Left :
-                rightPressed ?
-                    SnakeDirection::Right :
-                    _nextDir;
-    
-    // Check if fruit collision -> "eat" fruit
-    return std::make_pair(_ateFruit(fruit), _hasDied(winSize, wallTexSize));
-}
-
-bool Snake::_ateFruit(const Fruit *fruit) {
-    auto headSize = headTex.getSize();
-    sf::FloatRect rect(
-        sf::Vector2f(_headPos.x - headSize.x / 2, _headPos.y - headSize.y / 2),
-        sf::Vector2f(headSize)
-    );
-    auto fruitSize = Fruit::fruitTex.getSize();
-    sf::FloatRect fruitRect(
-        sf::Vector2f(
-            fruit->pos().x - fruitSize.x / 2,
-            fruit->pos().y - fruitSize.y / 2
-        ), sf::Vector2f(fruitSize)
-    );
-    if(rect.intersects(fruitRect)) {
-        _bodyInfos.push_back(std::make_pair(
-            _bodyInfos[_bodyInfos.size() - 1].first,
-            _bodyInfos[_bodyInfos.size() - 1].second
-        ));
-        _moveDelay -= _moveDelayDec;
-        if(_moveDelay < 0) {
-            _moveDelay = 0;
-        }
-        return true;
-    }
-    return false;
-}
-
-bool Snake::_hasDied(
-        const sf::Vector2u winSize, const sf::Vector2u wallTexSize) const {
-    // Check if the head is colliding with the body
-    auto headSize = headTex.getSize();
-    sf::FloatRect rect(
-        sf::Vector2f(_headPos.x - headSize.x / 2, _headPos.y - headSize.y / 2),
-        sf::Vector2f(headSize)
-    );
-    auto bodySize = bodyTex.getSize();
-    for(const auto &bodyInfo : _bodyInfos) {
-        sf::FloatRect infoRect(
-            sf::Vector2f(
-                bodyInfo.first.x - (bodySize.x * 0.75) / 2,
-                bodyInfo.first.y - (bodySize.y * 0.75) / 2
-            ), sf::Vector2f(bodySize.x * 0.75, bodySize.y * 0.75)
-        );
+void Snake::update(const double delta, link::GameLoop &loop) {
+    auto state = std::any_cast<GameState>(loop.globalGameState["state"]);
+    switch(state) {
+        case GameState::Start: {
+            auto winSize = loop.getSize();
+            auto headSize = _resMan.texture("snake-head").getSize();
+            setPosition(sf::Vector2f(
+                winSize.x / 2 + headSize.x, 3 * (winSize.y / 4)
+            ));
+            resetBody();
+        } break;
         
-        if(rect.intersects(infoRect)) {
-            return true;
-        }
+        case GameState::Playing: {
+            // Move if necessary
+            _moveTimer += delta;
+            if(_moveTimer >= _moveDelay) {
+                _moveTimer = 0;
+                _move();
+            }
+            
+            // Change direction on key press (but update when move triggers)
+            _nextDir = _inpMan.held("up") ?
+                SnakeDirection::Up :
+                _inpMan.held("down") ?
+                    SnakeDirection::Down :
+                    _inpMan.held("left") ?
+                        SnakeDirection::Left :
+                        _inpMan.held("right") ?
+                            SnakeDirection::Right :
+                            _nextDir;
+        } break;
+        
+        case GameState::Dead:
+            
+            break;
     }
-    
-    // Check if the head has hit a wall
-    if(_headPos.x - headSize.x / 2 < wallTexSize.x
-            || _headPos.y - headSize.y / 2 < wallTexSize.y
-            || _headPos.x + headSize.x / 2 > winSize.x - wallTexSize.x
-            || _headPos.y + headSize.y / 2 > winSize.y - wallTexSize.y) {
-        return true;
-    }
-    
-    return false;
 }
 
 void Snake::_move(void) {
@@ -121,7 +80,7 @@ void Snake::_move(void) {
     
     // Move the head to the new direction
     _dir = _nextDir;
-    auto headSize = sf::Vector2i(headTex.getSize());
+    auto headSize = sf::Vector2i(_resMan.texture("snake-head").getSize());
     _headPos.x +=
         _dir == SnakeDirection::Right ?
             headSize.x :
@@ -132,7 +91,84 @@ void Snake::_move(void) {
             (_dir == SnakeDirection::Up ? -headSize.y : 0);
 }
 
+bool Snake::hasDied(const sf::Vector2u winSize) {
+    // Check if the head is colliding with the body
+    auto headTex = _resMan.texture("snake-head");
+    auto headSize = headTex.getSize();
+    sf::FloatRect rect(
+        sf::Vector2f(_headPos.x - headSize.x / 2, _headPos.y - headSize.y / 2),
+        sf::Vector2f(headSize)
+    );
+    auto bodyTex = _resMan.texture("snake-body");
+    auto bodySize = bodyTex.getSize();
+    for(const auto &bodyInfo : _bodyInfos) {
+        sf::FloatRect infoRect(
+            sf::Vector2f(
+                bodyInfo.first.x - (bodySize.x * 0.75) / 2,
+                bodyInfo.first.y - (bodySize.y * 0.75) / 2
+            ), sf::Vector2f(bodySize.x * 0.75, bodySize.y * 0.75)
+        );
+        
+        if(rect.intersects(infoRect)) {
+            _deathSound.play();
+            return true;
+        }
+    }
+    
+    // Check if the head has hit a wall
+    auto wallTexSize = _resMan.texture("wall").getSize();
+    if(_headPos.x - headSize.x / 2 < wallTexSize.x
+            || _headPos.y - headSize.y / 2 < wallTexSize.y
+            || _headPos.x + headSize.x / 2 > winSize.x - wallTexSize.x
+            || _headPos.y + headSize.y / 2 > winSize.y - wallTexSize.y) {
+        _deathSound.play();
+        return true;
+    }
+    
+    return false;
+}
+
+bool Snake::ateFruit(const std::shared_ptr<Fruit> &fruit) {
+    auto headTexSize = _resMan.texture("snake-head").getSize();
+    auto fruitSize = _resMan.texture("fruit").getSize();
+    sf::FloatRect headRect(
+        sf::Vector2f(
+            _headPos.x - headTexSize.x / 2, _headPos.y - headTexSize.y / 2
+        ), sf::Vector2f(headTexSize)
+    );
+    sf::FloatRect fruitRect(
+        sf::Vector2f(
+            fruit->pos().x - fruitSize.x / 2,
+            fruit->pos().y - fruitSize.y / 2
+        ), sf::Vector2f(fruitSize)
+    );
+    
+    if(headRect.intersects(fruitRect)) {
+        _bodyInfos.push_back(std::make_pair(
+            _bodyInfos[_bodyInfos.size() - 1].first,
+            _bodyInfos[_bodyInfos.size() - 1].second
+        ));
+        _moveDelay -= _moveDelayDec;
+        if(_moveDelay < 0) {
+            _moveDelay = 0;
+        }
+        
+        _eatSound.play();
+        
+        return true;
+    }
+    
+    return false;
+}
+
+void Snake::setPosition(const sf::Vector2f pos) {
+    _headPos = pos;
+}
+
 void Snake::resetBody(void) {
+    auto headTex = _resMan.texture("snake-head");
+    auto bodyTex = _resMan.texture("snake-body");
+    
     _dir = _nextDir = SnakeDirection::Right;
     while(_bodyInfos.size() > _minParts - 1) {
         _bodyInfos.pop_back();
@@ -146,14 +182,13 @@ void Snake::resetBody(void) {
             _headPos.x - headTex.getSize().x - bodyTex.getSize().x, _headPos.y
         ), SnakeDirection::Right
     );
-}
-
-void Snake::setPosition(const sf::Vector2f pos) {
-    _headPos = pos;
+    
+    _moveDelay = _defMoveDelay;
 }
 
 void Snake::draw(sf::RenderTarget &target, sf::RenderStates states) const {
     // Draw head texture as a sprite w/ center at _headPos
+    auto headTex = _resMan.texture("snake-head");
     sf::Sprite headDrawable(headTex);
     auto headSize = headTex.getSize();
     headDrawable.setOrigin(sf::Vector2f(headSize.x / 2, headSize.y / 2));
@@ -174,6 +209,7 @@ void Snake::draw(sf::RenderTarget &target, sf::RenderStates states) const {
     target.draw(headDrawable, states);
     
     // Draw the body parts that follow
+    auto bodyTex = _resMan.texture("snake-body");
     BodyInfo lastBody = std::make_pair(_headPos, _dir);
     for(const auto &bodyInfo : _bodyInfos) {
         sf::Sprite bodyDrawable(bodyTex);

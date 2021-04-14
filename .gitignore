@@ -3,3 +3,6 @@
 obj
 *.o
 snake
+link-v21.414.1500.tar.xz
+*.xz
+link/
