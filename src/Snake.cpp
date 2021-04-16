@@ -30,11 +30,6 @@ void SnakeStart::update(
     parent.resetBody();
 }
 
-void SnakeStart::draw(
-        sf::RenderTarget &target, sf::RenderStates states) const {
-    
-}
-
 void SnakePlaying::update(
         Snake &parent,
         const double delta, const link::GameLoop &loop,
@@ -87,11 +82,6 @@ void SnakePlaying::_move(
             (dir == SnakeDirection::Up ? -headSize.y : 0);
 }
 
-void SnakePlaying::draw(
-        sf::RenderTarget &target, sf::RenderStates states) const {
-    
-}
-
 void SnakeDead::update(
         Snake &parent,
         const double delta, const link::GameLoop &loop,
@@ -100,10 +90,6 @@ void SnakeDead::update(
         const double moveDelay, double &moveTimer,
         SnakeDirection &nextDir, SnakeDirection &dir,
         std::vector<BodyInfo> &bodyInfos, sf::Vector2f &headPos) const {
-}
-
-void SnakeDead::draw(
-        sf::RenderTarget &target, sf::RenderStates states) const {
 }
 
 Snake::Snake(

@@ -36,9 +36,6 @@ namespace snake {
                 SnakeDirection &nextDir, SnakeDirection &dir,
                 std::vector<BodyInfo> &bodyInfos, sf::Vector2f &headPos
             ) const = 0;
-            virtual void draw(
-                sf::RenderTarget &target, sf::RenderStates states
-            ) const = 0;
     };
     
     class SnakeStart : public SnakeStateBehavior {
@@ -51,9 +48,6 @@ namespace snake {
                 const double moveDelay, double &moveTimer,
                 SnakeDirection &nextDir, SnakeDirection &dir,
                 std::vector<BodyInfo> &bodyInfos, sf::Vector2f &headPos
-            ) const override;
-            void draw(
-                sf::RenderTarget &target, sf::RenderStates states
             ) const override;
     };
     
@@ -75,9 +69,6 @@ namespace snake {
                 SnakeDirection &nextDir, SnakeDirection &dir,
                 std::vector<BodyInfo> &bodyInfos, sf::Vector2f &headPos
             ) const override;
-            void draw(
-                sf::RenderTarget &target, sf::RenderStates states
-            ) const override;
     };
     
     class SnakeDead : public SnakeStateBehavior {
@@ -87,12 +78,9 @@ namespace snake {
                 const double delta, const link::GameLoop &loop,
                 const link::ResourceManager &resMan,
                 const link::InputManager &inpMan,
-                const double moveDelay, double &moveTimer,
+                const double moveDelay,double &moveTimer,
                 SnakeDirection &nextDir, SnakeDirection &dir,
                 std::vector<BodyInfo> &bodyInfos, sf::Vector2f &headPos
-            ) const override;
-            void draw(
-                sf::RenderTarget &target, sf::RenderStates states
             ) const override;
     };
     
