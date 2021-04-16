@@ -62,17 +62,20 @@ namespace snake {
      */
     class Snake : public sf::Drawable, public link::Updatable {
         private:
-            const double _moveDelayDec, _defMoveDelay;
-            const size_t _minParts;
+            const double _moveDelayDec; // Amount to decrease timer speed by
+            const double _defMoveDelay; // Default timer speed
+            const size_t _minParts; // Minimum number of parts to spawn with
             const link::ResourceManager &_resMan;
             const link::InputManager &_inpMan;
             
-            sf::Vector2f _headPos;
-            std::vector<BodyInfo> _bodyInfos;
-            double _moveTimer, _moveDelay;
-            sf::SoundBuffer _eatBuffer, _deathBuffer;
-            sf::Sound _eatSound, _deathSound;
-            SnakeDirection _dir;
+            sf::Vector2f _headPos; // Head for the snake
+            std::vector<BodyInfo> _bodyInfos; // Dir and position of body pieces
+            double _moveTimer, _moveDelay; // Counter for when to move forward
+            sf::SoundBuffer _eatBuffer, _deathBuffer; // Eat and death audio
+            sf::Sound _eatSound, _deathSound; // Eat and death audio players
+            SnakeDirection _dir; // Current HEAD direction
+            
+            // List of behaviors for the update based on game state
             std::map<GameState, std::shared_ptr<SnakeStateBehavior>> _behaviors;
             
         public:
@@ -94,6 +97,7 @@ namespace snake {
             bool ateFruit(const std::shared_ptr<Fruit> &fruit);
             bool hasDied(const sf::Vector2u winSize);
             
+            // Core of class
             void update(const double delta, link::GameLoop &loop) override;
             void draw(
                 sf::RenderTarget &target, sf::RenderStates states

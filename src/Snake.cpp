@@ -159,6 +159,7 @@ void Snake::setPosition(const sf::Vector2f pos) {
 
 void Snake::moveForward(const double delta) {
     if(_moveTimer < _moveDelay) {
+        _moveTimer += delta;
         return;
     }
     _moveTimer = 0;
