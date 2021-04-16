@@ -62,6 +62,14 @@ namespace snake {
      */
     class Snake : public sf::Drawable, public link::Updatable {
         private:
+            // Helpers for draw
+            static bool _isTopRightOrBottomLeft(
+                const SnakeDirection oldDir, const SnakeDirection newDir
+            );
+            static bool _isTopLeftOrBottomRight(
+                const SnakeDirection oldDir, const SnakeDirection newDir
+            );
+            
             const double _moveDelayDec; // Amount to decrease timer speed by
             const double _defMoveDelay; // Default timer speed
             const size_t _minParts; // Minimum number of parts to spawn with

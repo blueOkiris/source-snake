@@ -208,6 +208,26 @@ void Snake::resetBody(void) {
     _moveDelay = _defMoveDelay;
 }
 
+bool Snake::_isTopRightOrBottomLeft(
+        const SnakeDirection oldDir, const SnakeDirection newDir) {
+    return (
+        (oldDir == SnakeDirection::Right && newDir == SnakeDirection::Up)
+        || (oldDir == SnakeDirection::Up && newDir == SnakeDirection::Right)
+        || (oldDir == SnakeDirection::Left && newDir == SnakeDirection::Down)
+        || (oldDir == SnakeDirection::Down && newDir == SnakeDirection::Left)
+    );
+}
+
+bool Snake::_isTopLeftOrBottomRight(
+        const SnakeDirection oldDir, const SnakeDirection newDir) {
+    return (
+        (oldDir == SnakeDirection::Right && newDir == SnakeDirection::Down)
+        || (oldDir == SnakeDirection::Left && newDir == SnakeDirection::Up)
+        || (oldDir == SnakeDirection::Down && newDir == SnakeDirection::Right)
+        || (oldDir == SnakeDirection::Up && newDir == SnakeDirection::Left)
+    );
+}
+
 void Snake::draw(sf::RenderTarget &target, sf::RenderStates states) const {
     // Draw head texture as a sprite w/ center at _headPos
     auto headTex = _resMan.texture("snake-head");
@@ -230,47 +250,21 @@ void Snake::draw(sf::RenderTarget &target, sf::RenderStates states) const {
     }
     target.draw(headDrawable, states);
     
-    // Draw the body parts that follow
     auto bodyTex = _resMan.texture("snake-body");
-    BodyInfo lastBody = std::make_pair(_headPos, _dir);
+    
+    // Draw the body parts that follow
+    auto lastBody = std::make_pair(_headPos, _dir); // "previous" defs to head
     for(const auto &bodyInfo : _bodyInfos) {
         sf::Sprite bodyDrawable(bodyTex);
         auto bodySize = bodyTex.getSize();
-        if(bodyInfo != lastBody // Rotate counter-clockwise if needed
-                && (
-                    (
-                        bodyInfo.second == SnakeDirection::Up
-                        && lastBody.second == SnakeDirection::Right
-                    ) || (
-                        bodyInfo.second == SnakeDirection::Left
-                        && lastBody.second == SnakeDirection::Down
-                    ) || (
-                        bodyInfo.second == SnakeDirection::Right
-                        && lastBody.second == SnakeDirection::Up
-                    ) || (
-                        bodyInfo.second == SnakeDirection::Down
-                        && lastBody.second == SnakeDirection::Left
-                    )
-                )) {
+        if(bodyInfo != lastBody
+                && _isTopRightOrBottomLeft(lastBody.second, bodyInfo.second)) {
             bodyDrawable.rotate(45);
-        } else if(bodyInfo != lastBody // Rotate clockwise if needed
-                && (
-                    (
-                        bodyInfo.second == SnakeDirection::Down
-                        && lastBody.second == SnakeDirection::Right
-                    ) || (
-                        bodyInfo.second == SnakeDirection::Up
-                        && lastBody.second == SnakeDirection::Left
-                    ) || (
-                        bodyInfo.second == SnakeDirection::Right
-                        && lastBody.second == SnakeDirection::Down
-                    ) || (
-                        bodyInfo.second == SnakeDirection::Left
-                        && lastBody.second == SnakeDirection::Up
-                    ) 
-                )) {
+        } else if(bodyInfo != lastBody
+                && _isTopLeftOrBottomRight(lastBody.second, bodyInfo.second)) {
             bodyDrawable.rotate(-45);
-        } else { // Rotate to a specific direction
+        } else {
+            // Just rotate normally
             switch(bodyInfo.second) {
                 case SnakeDirection::Up:
                     break;
@@ -288,6 +282,7 @@ void Snake::draw(sf::RenderTarget &target, sf::RenderStates states) const {
         bodyDrawable.setOrigin(sf::Vector2f(bodySize.x / 2, bodySize.y / 2));
         bodyDrawable.setPosition(bodyInfo.first);
         target.draw(bodyDrawable, states);
+        
         lastBody = bodyInfo;
     }
 }
