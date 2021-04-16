@@ -29,58 +29,28 @@ namespace snake {
         public:
             virtual void update(
                 Snake &parent,
-                const double delta, const link::GameLoop &loop,
-                const link::ResourceManager &resMan,
-                const link::InputManager &inpMan,
-                const double moveDelay, double &moveTimer,
-                SnakeDirection &nextDir, SnakeDirection &dir,
-                std::vector<BodyInfo> &bodyInfos, sf::Vector2f &headPos
+                const double delta, link::GameLoop &loop
             ) const = 0;
     };
     
     class SnakeStart : public SnakeStateBehavior {
         public:
             void update(
-                Snake &parent,
-                const double delta, const link::GameLoop &loop,
-                const link::ResourceManager &resMan,
-                const link::InputManager &inpMan,
-                const double moveDelay, double &moveTimer,
-                SnakeDirection &nextDir, SnakeDirection &dir,
-                std::vector<BodyInfo> &bodyInfos, sf::Vector2f &headPos
+                Snake &parent, const double delta, link::GameLoop &loop
             ) const override;
     };
     
     class SnakePlaying : public SnakeStateBehavior {
-        private:
-            void _move(
-                const link::ResourceManager &resMan,
-                SnakeDirection &dir, SnakeDirection &nextDir,
-                std::vector<BodyInfo> &bodyInfos, sf::Vector2f &headPos
-            ) const;
-            
         public:
             void update(
-                Snake &parent,
-                const double delta, const link::GameLoop &loop,
-                const link::ResourceManager &resMan,
-                const link::InputManager &inpMan,
-                const double moveDelay, double &moveTimer,
-                SnakeDirection &nextDir, SnakeDirection &dir,
-                std::vector<BodyInfo> &bodyInfos, sf::Vector2f &headPos
+                Snake &parent, const double delta, link::GameLoop &loop
             ) const override;
     };
     
     class SnakeDead : public SnakeStateBehavior {
         public:
             void update(
-                Snake &parent,
-                const double delta, const link::GameLoop &loop,
-                const link::ResourceManager &resMan,
-                const link::InputManager &inpMan,
-                const double moveDelay,double &moveTimer,
-                SnakeDirection &nextDir, SnakeDirection &dir,
-                std::vector<BodyInfo> &bodyInfos, sf::Vector2f &headPos
+                Snake &parent, const double delta, link::GameLoop &loop
             ) const override;
     };
     
@@ -99,20 +69,28 @@ namespace snake {
             
             sf::Vector2f _headPos;
             std::vector<BodyInfo> _bodyInfos;
-            SnakeDirection _dir, _nextDir;
             double _moveTimer, _moveDelay;
             sf::SoundBuffer _eatBuffer, _deathBuffer;
             sf::Sound _eatSound, _deathSound;
+            SnakeDirection _dir;
             std::map<GameState, std::shared_ptr<SnakeStateBehavior>> _behaviors;
             
         public:
+            SnakeDirection nextDir;
+            
             Snake(
                 const link::ResourceManager &resMan,
                 const link::InputManager &inpMan
             );
             
+            // State manipulation
             void setPosition(const sf::Vector2f pos);
+            void moveForward(const double delta);
             void resetBody(void);
+            const link::ResourceManager &resMan(void);
+            const link::InputManager &inpMan(void);
+            
+            // State change possibilities
             bool ateFruit(const std::shared_ptr<Fruit> &fruit);
             bool hasDied(const sf::Vector2u winSize);
             

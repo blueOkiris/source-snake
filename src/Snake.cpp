@@ -15,15 +15,9 @@
 using namespace snake;
 
 void SnakeStart::update(
-        Snake &parent,
-        const double delta, const link::GameLoop &loop,
-        const link::ResourceManager &resMan,
-        const link::InputManager &inpMan,
-        const double moveDelay, double &moveTimer,
-        SnakeDirection &nextDir, SnakeDirection &dir,
-        std::vector<BodyInfo> &bodyInfos, sf::Vector2f &headPos) const {
+        Snake &parent, const double delta, link::GameLoop &loop) const {
     auto winSize = loop.getSize();
-    auto headSize = resMan.texture("snake-head").getSize();
+    auto headSize = parent.resMan().texture("snake-head").getSize();
     parent.setPosition(sf::Vector2f(
         winSize.x / 2 + headSize.x, 3 * (winSize.y / 4)
     ));
@@ -31,22 +25,13 @@ void SnakeStart::update(
 }
 
 void SnakePlaying::update(
-        Snake &parent,
-        const double delta, const link::GameLoop &loop,
-        const link::ResourceManager &resMan,
-        const link::InputManager &inpMan,
-        const double moveDelay, double &moveTimer,
-        SnakeDirection &nextDir, SnakeDirection &dir,
-        std::vector<BodyInfo> &bodyInfos, sf::Vector2f &headPos) const {
+        Snake &parent, const double delta, link::GameLoop &loop) const {
     // Move if necessary
-    moveTimer += delta;
-    if(moveTimer >= moveDelay) {
-        moveTimer = 0;
-        _move(resMan, dir, nextDir, bodyInfos, headPos);
-    }
+    parent.moveForward(delta);
     
     // Change direction on key press (but update when move triggers)
-    nextDir = inpMan.held("up") ?
+    auto inpMan = parent.inpMan();
+    parent.nextDir = inpMan.held("up") ?
         SnakeDirection::Up :
         inpMan.held("down") ?
             SnakeDirection::Down :
@@ -54,42 +39,11 @@ void SnakePlaying::update(
                 SnakeDirection::Left :
                 inpMan.held("right") ?
                     SnakeDirection::Right :
-                    nextDir;
-}
-
-void SnakePlaying::_move(
-        const link::ResourceManager &resMan,
-        SnakeDirection &dir, SnakeDirection &nextDir,
-        std::vector<BodyInfo> &bodyInfos, sf::Vector2f &headPos) const {
-    // Update body parts
-    for(size_t i = bodyInfos.size() - 1; i > 0; i--) {
-        bodyInfos[i].first = bodyInfos[i - 1].first;
-        bodyInfos[i].second = bodyInfos[i - 1].second;
-    }
-    bodyInfos[0].first = headPos;
-    bodyInfos[0].second = dir;
-    
-    // Move the head to the new direction
-    dir = nextDir;
-    auto headSize = sf::Vector2i(resMan.texture("snake-head").getSize());
-    headPos.x +=
-        dir == SnakeDirection::Right ?
-            headSize.x :
-            (dir == SnakeDirection::Left ? -headSize.x : 0);
-    headPos.y +=
-        dir == SnakeDirection::Down ?
-            headSize.y :
-            (dir == SnakeDirection::Up ? -headSize.y : 0);
+                    parent.nextDir;
 }
 
 void SnakeDead::update(
-        Snake &parent,
-        const double delta, const link::GameLoop &loop,
-        const link::ResourceManager &resMan,
-        const link::InputManager &inpMan,
-        const double moveDelay, double &moveTimer,
-        SnakeDirection &nextDir, SnakeDirection &dir,
-        std::vector<BodyInfo> &bodyInfos, sf::Vector2f &headPos) const {
+        Snake &parent, const double delta, link::GameLoop &loop) const {
 }
 
 Snake::Snake(
@@ -97,10 +51,11 @@ Snake::Snake(
         _moveDelayDec(0.005), _defMoveDelay(0.2),
         _minParts(3), _resMan(resMan), _inpMan(inpMan),
         _headPos(sf::Vector2f(0, 0)), _bodyInfos(std::vector<BodyInfo>()),
-        _dir(SnakeDirection::Right), _nextDir(SnakeDirection::Right),
         _moveTimer(0), _moveDelay(_defMoveDelay),
         _eatBuffer(resMan.soundBuffer("eat")),
-        _deathBuffer(resMan.soundBuffer("die")) {
+        _deathBuffer(resMan.soundBuffer("die")),
+        _dir(SnakeDirection::Right),
+        nextDir(SnakeDirection::Right) {
     _behaviors.emplace(GameState::Start, std::make_shared<SnakeStart>());
     _behaviors.emplace(GameState::Playing, std::make_shared<SnakePlaying>());
     _behaviors.emplace(GameState::Dead, std::make_shared<SnakeDead>());
@@ -117,10 +72,7 @@ Snake::Snake(
 
 void Snake::update(const double delta, link::GameLoop &loop) {
     auto state = std::any_cast<GameState>(loop.globalGameState["state"]);
-    _behaviors[state]->update(
-        *this, delta, loop, _resMan, _inpMan,
-        _moveDelay, _moveTimer, _nextDir, _dir, _bodyInfos, _headPos
-    );
+    _behaviors[state]->update(*this, delta, loop);
 }
 
 bool Snake::hasDied(const sf::Vector2u winSize) {
@@ -193,15 +145,52 @@ bool Snake::ateFruit(const std::shared_ptr<Fruit> &fruit) {
     return false;
 }
 
+const link::ResourceManager &Snake::resMan(void) {
+    return _resMan;
+}
+
+const link::InputManager &Snake::inpMan(void) {
+    return _inpMan;
+}
+
 void Snake::setPosition(const sf::Vector2f pos) {
     _headPos = pos;
+}
+
+void Snake::moveForward(const double delta) {
+    if(_moveTimer < _moveDelay) {
+        return;
+    }
+    _moveTimer = 0;
+    
+    // Update body parts
+    for(size_t i = _bodyInfos.size() - 1; i > 0; i--) {
+        _bodyInfos[i].first = _bodyInfos[i - 1].first;
+        _bodyInfos[i].second = _bodyInfos[i - 1].second;
+    }
+    _bodyInfos[0].first = _headPos;
+    _bodyInfos[0].second = _dir;
+    
+    // Move the head to the new direction
+    _dir = nextDir;
+    auto headSize = sf::Vector2i(
+        _resMan.texture("snake-head").getSize()
+    );
+    _headPos.x +=
+        _dir == SnakeDirection::Right ?
+            headSize.x :
+            (_dir == SnakeDirection::Left ? -headSize.x : 0);
+    _headPos.y +=
+        _dir == SnakeDirection::Down ?
+            headSize.y :
+            (_dir == SnakeDirection::Up ? -headSize.y : 0);
 }
 
 void Snake::resetBody(void) {
     auto headTex = _resMan.texture("snake-head");
     auto bodyTex = _resMan.texture("snake-body");
     
-    _dir = _nextDir = SnakeDirection::Right;
+    _dir = nextDir = SnakeDirection::Right;
     while(_bodyInfos.size() > _minParts - 1) {
         _bodyInfos.pop_back();
     }
