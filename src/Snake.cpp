@@ -236,7 +236,7 @@ void Snake::draw(sf::RenderTarget &target, sf::RenderStates states) const {
     for(const auto &bodyInfo : _bodyInfos) {
         sf::Sprite bodyDrawable(bodyTex);
         auto bodySize = bodyTex.getSize();
-        if(bodyInfo != lastBody
+        if(bodyInfo != lastBody // Rotate counter-clockwise if needed
                 && (
                     (
                         bodyInfo.second == SnakeDirection::Up
@@ -253,7 +253,7 @@ void Snake::draw(sf::RenderTarget &target, sf::RenderStates states) const {
                     )
                 )) {
             bodyDrawable.rotate(45);
-        } else if(bodyInfo != lastBody
+        } else if(bodyInfo != lastBody // Rotate clockwise if needed
                 && (
                     (
                         bodyInfo.second == SnakeDirection::Down
@@ -270,7 +270,7 @@ void Snake::draw(sf::RenderTarget &target, sf::RenderStates states) const {
                     ) 
                 )) {
             bodyDrawable.rotate(-45);
-        } else {
+        } else { // Rotate to a specific direction
             switch(bodyInfo.second) {
                 case SnakeDirection::Up:
                     break;
